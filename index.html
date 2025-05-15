@@ -45,7 +45,6 @@
   <script>
     const apiKey = "5ce9f8d068bf9962e11d192391618d53";
 
-    // מילון תרגום שמות קבוצות מעברית לאנגלית
     const teamsMap = {
       "מנצ'סטר סיטי": "Manchester City",
       "מנצ'סטר יונייטד": "Manchester United",
@@ -53,11 +52,11 @@
       "יובנטוס": "Juventus",
       "אטאלנטה": "Atalanta",
       "ריאל מדריד": "Real Madrid",
-      "בארסה": "Barcelona",
-      "צ'לסי": "Chelsea",
       "ליברפול": "Liverpool",
+      "צ'לסי": "Chelsea",
+      "בארסה": "Barcelona",
       "פ.ס.ז": "Paris Saint Germain",
-      // הוסף עוד קבוצות כרצונך כאן
+      "באיירן מינכן": "Bayern Munich"
     };
 
     function translateTeamName(name) {
@@ -75,14 +74,14 @@
 
     async function findFixtureId(homeId, awayId) {
       const today = new Date().toISOString().split('T')[0];
-      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const twoWeeksLater = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       const responses = await Promise.all([
-        fetch(`https://v3.football.api-sports.io/fixtures?team=${homeId}&from=${today}&to=${nextWeek}`, {
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${homeId}&from=${today}&to=${twoWeeksLater}`, {
           method: 'GET',
           headers: { 'x-apisports-key': apiKey }
         }),
-        fetch(`https://v3.football.api-sports.io/fixtures?team=${awayId}&from=${today}&to=${nextWeek}`, {
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${awayId}&from=${today}&to=${twoWeeksLater}`, {
           method: 'GET',
           headers: { 'x-apisports-key': apiKey }
         })
@@ -113,13 +112,13 @@
       const awayId = await getTeamId(awayName);
 
       if (!homeId || !awayId) {
-        resultDiv.innerHTML = 'לא נמצאה אחת הקבוצות. ודא שהשמות כתובים נכון.';
+        resultDiv.innerHTML = 'לא נמצאה אחת הקבוצות. בדוק את האיות או נסה באנגלית.';
         return;
       }
 
       const fixtureId = await findFixtureId(homeId, awayId);
       if (!fixtureId) {
-        resultDiv.innerHTML = 'לא נמצא משחק קרוב בין הקבוצות האלה.';
+        resultDiv.innerHTML = 'לא נמצא משחק קרוב בין הקבוצות האלו ב־14 הימים הקרובים.';
         return;
       }
 
@@ -134,7 +133,7 @@
 
         resultDiv.innerHTML = `<strong>תחזית:</strong> ${prediction} (${percent})`;
       } catch (error) {
-        resultDiv.innerHTML = 'שגיאה בעת שליפת התחזית. נסה שוב.';
+        resultDiv.innerHTML = 'שגיאה בעת שליפת התחזית.';
       }
     }
   </script>
