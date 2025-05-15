@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" >
 <head>
   <meta charset="UTF-8" />
-  <title>תחזית כדורגל משופרת</title>
+  <title>תחזית כדורגל משופרת עם טיפול בשגיאות</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -41,6 +41,7 @@
       font-size: 20px;
       font-weight: bold;
       white-space: pre-line;
+      min-height: 50px;
     }
     .history {
       margin-top: 40px;
@@ -99,104 +100,146 @@
     }
 
     async function getTeamStanding(teamName, leagueId) {
-      const res = await fetch(
-        `https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`,
-        {
-          method: "GET",
-          headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+      try {
+        console.log(`Fetching standings for league ${leagueId}...`);
+        const res = await fetch(
+          `https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`,
+          {
+            method: "GET",
+            headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+          }
+        );
+        if (!res.ok) {
+          console.error("Fetch error: HTTP status", res.status);
+          return null;
         }
-      );
-      const data = await res.json();
+        const data = await res.json();
 
-      if (!data.response || data.response.length === 0) {
-        console.warn("אין טבלה זמינה לליגה:", leagueId);
+        if (!data.response || data.response.length === 0) {
+          console.warn("אין טבלה זמינה לליגה:", leagueId);
+          return null;
+        }
+
+        const standings = data.response[0].league.standings[0] || [];
+
+        const normalizedInput = teamName.toLowerCase().replace(/\s+/g, "");
+
+        for (const team of standings) {
+          const teamNameEn = team.team.name.toLowerCase().replace(/\s+/g, "");
+          const teamNameLocal = (team.team.name_local || "")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+          if (
+            teamNameEn === normalizedInput ||
+            teamNameLocal === normalizedInput ||
+            teamNameEn.includes(normalizedInput) ||
+            normalizedInput.includes(teamNameEn) ||
+            teamNameLocal.includes(normalizedInput) ||
+            normalizedInput.includes(teamNameLocal)
+          ) {
+            console.log(`Team "${teamName}" matched with "${team.team.name}"`);
+            return team;
+          }
+        }
+
+        console.warn(`לא נמצאה קבוצה בשם "${teamName}" בטבלה של הליגה.`);
+        return null;
+      } catch (error) {
+        console.error("Error fetching standings:", error);
         return null;
       }
-
-      const standings = data.response[0].league.standings[0] || [];
-
-      const normalizedInput = teamName.toLowerCase().replace(/\s+/g, "");
-      
-      for (const team of standings) {
-        const teamNameEn = team.team.name.toLowerCase().replace(/\s+/g, "");
-        const teamNameLocal = (team.team.name_local || "").toLowerCase().replace(/\s+/g, "");
-
-        if (
-          teamNameEn === normalizedInput ||
-          teamNameLocal === normalizedInput ||
-          teamNameEn.includes(normalizedInput) ||
-          normalizedInput.includes(teamNameEn) ||
-          teamNameLocal.includes(normalizedInput) ||
-          normalizedInput.includes(teamNameLocal)
-        ) {
-          return team;
-        }
-      }
-
-      return null;
     }
 
     async function getRecentWins(teamId, leagueId) {
-      const res = await fetch(
-        `https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`,
-        {
-          method: "GET",
-          headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+      try {
+        console.log(`Fetching recent fixtures for team ID ${teamId}...`);
+        const res = await fetch(
+          `https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`,
+          {
+            method: "GET",
+            headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+          }
+        );
+        if (!res.ok) {
+          console.error("Fetch error: HTTP status", res.status);
+          return 0;
         }
-      );
-      const data = await res.json();
+        const data = await res.json();
 
-      let winsCount = 0;
-      data.response.forEach((match) => {
-        if (
-          (match.teams.home.id === teamId && match.teams.winner === "home") ||
-          (match.teams.away.id === teamId && match.teams.winner === "away")
-        ) {
-          winsCount++;
-        }
-      });
-      return winsCount;
+        let winsCount = 0;
+        data.response.forEach((match) => {
+          if (
+            (match.teams.home.id === teamId && match.teams.winner === "home") ||
+            (match.teams.away.id === teamId && match.teams.winner === "away")
+          ) {
+            winsCount++;
+          }
+        });
+        console.log(`Team ID ${teamId} won ${winsCount} of last 5 matches.`);
+        return winsCount;
+      } catch (error) {
+        console.error("Error fetching recent fixtures:", error);
+        return 0;
+      }
     }
 
     async function predict() {
-      const input1 = document.getElementById("team1").value.trim();
-      const input2 = document.getElementById("team2").value.trim();
-      const leagueId = document.getElementById("league").value;
-      const resultDiv = document.getElementById("result");
+      try {
+        console.log("Predict called");
+        const input1 = document.getElementById("team1").value.trim();
+        const input2 = document.getElementById("team2").value.trim();
+        const leagueId = document.getElementById("league").value;
+        const resultDiv = document.getElementById("result");
 
-      const team1Name = translateTeamName(input1);
-      const team2Name = translateTeamName(input2);
+        const team1Name = translateTeamName(input1);
+        const team2Name = translateTeamName(input2);
 
-      if (!team1Name || !team2Name || team1Name === team2Name) {
-        resultDiv.innerText = "יש להזין שמות שונים של קבוצות.";
-        return;
+        if (!team1Name || !team2Name) {
+          resultDiv.innerText = "יש להזין את שתי הקבוצות.";
+          return;
+        }
+
+        if (team1Name === team2Name) {
+          resultDiv.innerText = "יש להזין שמות שונים של קבוצות.";
+          return;
+        }
+
+        resultDiv.innerText = "טוען תחזית...";
+
+        const team1Data = await getTeamStanding(team1Name, leagueId);
+        const team2Data = await getTeamStanding(team2Name, leagueId);
+
+        if (!team1Data || !team2Data) {
+          resultDiv.innerText =
+            "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים ושהליגה תואמת.";
+          return;
+        }
+
+        const wins1 = await getRecentWins(team1Data.team.id, leagueId);
+        const wins2 = await getRecentWins(team2Data.team.id, leagueId);
+
+        // חישוב נקודות לפי דרוג בטבלה וזכיות אחרונות (משקל לדוגמה)
+        const score1 = (20 - team1Data.rank) * 3 + wins1 * 5;
+        const score2 = (20 - team2Data.rank) * 3 + wins2 * 5;
+
+        const total = score1 + score2 || 1;
+        const team1Chance = Math.round((score1 / total) * 100);
+        const team2Chance = 100 - team1Chance;
+
+        const resultText = `${team1Name} - ${team1Chance}% סיכוי לניצחון\n${team2Name} - ${team2Chance}% סיכוי לניצחון`;
+        resultDiv.innerText = resultText;
+
+        addToHistory(
+          `${team1Name} נגד ${team2Name} → ${team1Chance}% / ${team2Chance}%`
+        );
+        document.getElementById("team1").value = "";
+        document.getElementById("team2").value = "";
+      } catch (error) {
+        console.error("Error in predict:", error);
+        document.getElementById("result").innerText =
+          "אירעה שגיאה בחישוב התחזית. נסה שוב.";
       }
-
-      const team1Data = await getTeamStanding(team1Name, leagueId);
-      const team2Data = await getTeamStanding(team2Name, leagueId);
-
-      if (!team1Data || !team2Data) {
-        resultDiv.innerText =
-          "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים ושהליגה תואמת.";
-        return;
-      }
-
-      const wins1 = await getRecentWins(team1Data.team.id, leagueId);
-      const wins2 = await getRecentWins(team2Data.team.id, leagueId);
-
-      const score1 = (20 - team1Data.rank) * 3 + wins1 * 5;
-      const score2 = (20 - team2Data.rank) * 3 + wins2 * 5;
-
-      const total = score1 + score2 || 1;
-      const team1Chance = Math.round((score1 / total) * 100);
-      const team2Chance = 100 - team1Chance;
-
-      const resultText = `${team1Name} - ${team1Chance}% סיכוי לניצחון\n${team2Name} - ${team2Chance}% סיכוי לניצחון`;
-      resultDiv.innerText = resultText;
-
-      addToHistory(`${team1Name} נגד ${team2Name} → ${team1Chance}% / ${team2Chance}%`);
-      document.getElementById("team1").value = "";
-      document.getElementById("team2").value = "";
     }
 
     function addToHistory(entry) {
