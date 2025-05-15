@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>תחזית כדורגל</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      direction: rtl;
+      padding: 40px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+    }
+    .result {
+      margin-top: 30px;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>בדיקת סיכויי ניצחון</h1>
+  <input type="text" id="team1" placeholder="קבוצה ראשונה">
+  <input type="text" id="team2" placeholder="קבוצה שנייה">
+  <br>
+  <button onclick="predict()">חשב</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    function fakeAPI(team1, team2) {
+      const base1 = team1.length * 7 % 100;
+      const base2 = team2.length * 5 % 100;
+      let total = base1 + base2;
+      if (total === 0) total = 1;
+
+      const team1Chance = Math.round((base1 / total) * 100);
+      const team2Chance = 100 - team1Chance;
+
+      return { team1Chance, team2Chance };
+    }
+
+    function predict() {
+      const team1 = document.getElementById("team1").value.trim();
+      const team2 = document.getElementById("team2").value.trim();
+      const resultDiv = document.getElementById("result");
+
+      if (!team1 || !team2) {
+        resultDiv.innerText = "יש להזין את שתי הקבוצות.";
+        return;
+      }
+
+      const { team1Chance, team2Chance } = fakeAPI(team1, team2);
+
+      resultDiv.innerText =
+        `${team1} - ${team1Chance}% סיכוי לניצחון\n${team2} - ${team2Chance}% סיכוי לניצחון`;
+    }
+  </script>
+</body>
+</html>
