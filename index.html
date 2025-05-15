@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>חיזוי משחקי כדורגל</title>
+  <title>חיזוי משחקי כדורגל - גרסה משודרגת</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -32,6 +32,7 @@
     #result {
       margin-top: 20px;
       font-size: 18px;
+      min-height: 40px;
     }
   </style>
 </head>
@@ -76,7 +77,7 @@
         headers: { "x-apisports-key": apiKey },
       });
       const data = await response.json();
-      console.log("getTeamId response:", data);
+      console.log("getTeamId response for", teamName, ":", data);
       return data.response[0]?.team?.id || null;
     }
 
@@ -99,6 +100,7 @@
         const fixtureDate = new Date(fixture.fixture.date);
         console.log("Checking fixture date:", fixtureDate.toISOString());
         if (fixtureDate >= now && fixtureDate <= threeDaysLater) {
+          console.log("Matched fixture id:", fixture.fixture.id);
           return fixture.fixture.id;
         }
       }
@@ -111,8 +113,18 @@
         headers: { "x-apisports-key": apiKey },
       });
       const data = await response.json();
-      console.log("getTeamRanking response:", data);
-      return data.response[0]?.league?.standings[0]?.find((team) => team.team.id === teamId)?.rank || null;
+      console.log("getTeamRanking response for teamId", teamId, ":", data);
+
+      try {
+        // data.response[0].league.standings is an array of arrays — take first array
+        const standings = data.response[0]?.league?.standings?.[0];
+        if (!standings) return null;
+
+        const teamObj = standings.find((team) => team.team.id === teamId);
+        return teamObj ? teamObj.rank : null;
+      } catch {
+        return null;
+      }
     }
 
     async function predict() {
@@ -151,12 +163,19 @@
         if (!predictionData || !predictionData.name || !predictionData.percent || predictionData.percent === "0%") {
           const homeRank = await getTeamRanking(homeId);
           const awayRank = await getTeamRanking(awayId);
+          console.log("Home rank:", homeRank, "Away rank:", awayRank);
 
           if (homeRank && awayRank) {
             const likelyWinner = homeRank < awayRank ? homeName : awayName;
             resultDiv.innerHTML = `אין תחזית רשמית. לפי מיקום בטבלה: יתרון ל<strong> ${likelyWinner}</strong>.`;
+          } else if (homeRank === null && awayRank === null) {
+            resultDiv.innerHTML = "אין תחזית וגם לא נמצאו דירוגים לטבלה עבור שתי הקבוצות.";
+          } else if (homeRank === null) {
+            resultDiv.innerHTML = `אין תחזית. דירוג לא נמצא עבור ${homeName}.`;
+          } else if (awayRank === null) {
+            resultDiv.innerHTML = `אין תחזית. דירוג לא נמצא עבור ${awayName}.`;
           } else {
-            resultDiv.innerHTML = "לא נמצאה תחזית וגם לא הצלחנו לבדוק מיקומים.";
+            resultDiv.innerHTML = "אין תחזית וגם לא הצלחנו לבדוק מיקומים.";
           }
         } else {
           resultDiv.innerHTML = `<strong>תחזית:</strong> ${predictionData.name} (${predictionData.percent || "לא ידוע"})`;
