@@ -1,6 +1,7 @@
-<!DOCTYPE html><html lang="he">
+<!DOCTYPE html>
+<html lang="he">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>תחזית כדורגל משופרת</title>
   <style>
     body {
@@ -11,13 +12,16 @@
       padding: 50px;
       color: #333;
     }
-    select, input, button {
+    select,
+    input,
+    button {
       margin: 10px;
       padding: 12px;
       font-size: 16px;
       border-radius: 8px;
     }
-    input, select {
+    input,
+    select {
       width: 250px;
       max-width: 90%;
       border: 1px solid #ccc;
@@ -57,23 +61,36 @@
     <option value="78">גרמניה - בונדסליגה</option>
     <option value="61">צרפת - ליג 1</option>
     <option value="285">ישראל - ליגת העל</option>
-  </select><br>
-  <input type="text" id="team1" placeholder="קבוצה ראשונה (עברית או אנגלית)"><br>
-  <input type="text" id="team2" placeholder="קבוצה שנייה (עברית או אנגלית)"><br>
+  </select>
+  <br />
+  <input
+    type="text"
+    id="team1"
+    placeholder="קבוצה ראשונה (עברית או אנגלית)"
+  /><br />
+  <input
+    type="text"
+    id="team2"
+    placeholder="קבוצה שנייה (עברית או אנגלית)"
+  /><br />
   <button onclick="predict()">חשב</button>
   <button onclick="clearHistory()">נקה היסטוריה</button>
+
   <div class="result" id="result"></div>
+
   <div class="history">
     <h3>היסטוריית חיפושים:</h3>
     <ul id="historyList"></ul>
-  </div>  <script>
+  </div>
+
+  <script>
     const teamTranslations = {
       "מכבי תל אביב": "Maccabi Tel Aviv",
       "הפועל תל אביב": "Hapoel Tel Aviv",
       "מכבי חיפה": "Maccabi Haifa",
       "הפועל חיפה": "Hapoel Haifa",
       "הפועל באר שבע": "Hapoel Be'er Sheva",
-      "בית\"ר ירושלים": "Beitar Jerusalem"
+      'בית"ר ירושלים': "Beitar Jerusalem",
     };
 
     function translateTeamName(name) {
@@ -81,22 +98,61 @@
     }
 
     async function getTeamStanding(teamName, leagueId) {
-      const res = await fetch(`https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`, {
-        method: "GET",
-        headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" }
-      });
+      const res = await fetch(
+        `https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`,
+        {
+          method: "GET",
+          headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+        }
+      );
       const data = await res.json();
+
+      console.log("נתוני טבלה מה-API:", data);
+
       const standings = data.response[0]?.league?.standings[0] || [];
-      return standings.find(t => t.team.name.toLowerCase() === teamName.toLowerCase());
+
+      const normalizedInput = teamName
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9א-ת]/g, "");
+      console.log("מחפש התאמה ל:", normalizedInput);
+
+      for (const team of standings) {
+        const normalizedTeamName = team.team.name
+          .toLowerCase()
+          .replace(/[^a-zA-Z0-9א-ת]/g, "");
+        console.log("משווה ל:", normalizedTeamName);
+        if (
+          normalizedTeamName.includes(normalizedInput) ||
+          normalizedInput.includes(normalizedTeamName)
+        ) {
+          console.log("נמצא:", team.team.name);
+          return team;
+        }
+      }
+      console.log("לא נמצא התאמה ל:", teamName);
+      return null;
     }
 
     async function getRecentWins(teamId, leagueId) {
-      const res = await fetch(`https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`, {
-        method: "GET",
-        headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" }
-      });
+      const res = await fetch(
+        `https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`,
+        {
+          method: "GET",
+          headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
+        }
+      );
       const data = await res.json();
-      return data.response.filter(match => match.teams.winner === match.teams.home || match.teams.winner === match.teams.away).length;
+      // סופרים כמה משחקים אחרונים הקבוצה ניצחה
+      let winsCount = 0;
+      data.response.forEach((match) => {
+        if (
+          (match.teams.home.id === teamId && match.teams.winner === "home") ||
+          (match.teams.away.id === teamId && match.teams.winner === "away")
+        ) {
+          winsCount++;
+        }
+      });
+      return winsCount;
     }
 
     async function predict() {
@@ -117,7 +173,8 @@
       const team2Data = await getTeamStanding(team2Name, leagueId);
 
       if (!team1Data || !team2Data) {
-        resultDiv.innerText = "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים.";
+        resultDiv.innerText =
+          "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים ושהליגה תואמת.";
         return;
       }
 
@@ -152,7 +209,7 @@
       const list = document.getElementById("historyList");
       list.innerHTML = "";
       const history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
-      history.forEach(item => {
+      history.forEach((item) => {
         const li = document.createElement("li");
         li.innerText = item;
         list.appendChild(li);
@@ -165,5 +222,6 @@
     }
 
     renderHistory();
-  </script></body>
+  </script>
+</body>
 </html>
