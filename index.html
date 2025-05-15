@@ -1,9 +1,7 @@
-
-<!DOCTYPE html>
-<html lang="he">
+<!DOCTYPE html><html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>תחזית כדורגל</title>
+  <title>תחזית כדורגל משופרת</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -13,45 +11,33 @@
       padding: 50px;
       color: #333;
     }
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 30px;
-    }
-
-    input {
+    select, input, button {
+      margin: 10px;
       padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+    }
+    input, select {
       width: 250px;
       max-width: 90%;
-      margin: 10px;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 16px;
     }
-
     button {
-      padding: 12px 24px;
       background-color: #007bff;
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 16px;
       cursor: pointer;
       transition: background-color 0.3s;
-      margin: 5px;
     }
-
     button:hover {
       background-color: #0056b3;
     }
-
     .result {
       margin-top: 30px;
       font-size: 20px;
       font-weight: bold;
       white-space: pre-line;
     }
-
     .history {
       margin-top: 40px;
       text-align: right;
@@ -60,73 +46,96 @@
       margin-left: auto;
       margin-right: auto;
     }
-
-    .history h3 {
-      margin-bottom: 10px;
-    }
-
-    .history ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .history li {
-      background-color: #fff;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-    }
   </style>
 </head>
 <body>
-  <h1>בדיקת סיכויי ניצחון</h1>
-  <input type="text" id="team1" placeholder="קבוצה ראשונה">
-  <br>
-  <input type="text" id="team2" placeholder="קבוצה שנייה">
-  <br>
+  <h1>תחזית כדורגל לפי טבלה וביצועים</h1>
+  <select id="league">
+    <option value="39">אנגליה - פרמייר ליג</option>
+    <option value="140">ספרד - לה ליגה</option>
+    <option value="135">איטליה - סריה א'</option>
+    <option value="78">גרמניה - בונדסליגה</option>
+    <option value="61">צרפת - ליג 1</option>
+    <option value="285">ישראל - ליגת העל</option>
+  </select><br>
+  <input type="text" id="team1" placeholder="קבוצה ראשונה (עברית או אנגלית)"><br>
+  <input type="text" id="team2" placeholder="קבוצה שנייה (עברית או אנגלית)"><br>
   <button onclick="predict()">חשב</button>
   <button onclick="clearHistory()">נקה היסטוריה</button>
-
   <div class="result" id="result"></div>
-
   <div class="history">
     <h3>היסטוריית חיפושים:</h3>
     <ul id="historyList"></ul>
-  </div>
+  </div>  <script>
+    const teamTranslations = {
+      "מכבי תל אביב": "Maccabi Tel Aviv",
+      "הפועל תל אביב": "Hapoel Tel Aviv",
+      "מכבי חיפה": "Maccabi Haifa",
+      "הפועל חיפה": "Hapoel Haifa",
+      "הפועל באר שבע": "Hapoel Be'er Sheva",
+      "בית\"ר ירושלים": "Beitar Jerusalem"
+    };
 
-  <script>
-    function fakeAPI(team1, team2) {
-      const base1 = team1.length * 7 % 100;
-      const base2 = team2.length * 5 % 100;
-      let total = base1 + base2;
-      if (total === 0) total = 1;
-
-      const team1Chance = Math.round((base1 / total) * 100);
-      const team2Chance = 100 - team1Chance;
-
-      return { team1Chance, team2Chance };
+    function translateTeamName(name) {
+      return teamTranslations[name.trim()] || name.trim();
     }
 
-    function predict() {
-      const team1 = document.getElementById("team1").value.trim();
-      const team2 = document.getElementById("team2").value.trim();
+    async function getTeamStanding(teamName, leagueId) {
+      const res = await fetch(`https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`, {
+        method: "GET",
+        headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" }
+      });
+      const data = await res.json();
+      const standings = data.response[0]?.league?.standings[0] || [];
+      return standings.find(t => t.team.name.toLowerCase() === teamName.toLowerCase());
+    }
+
+    async function getRecentWins(teamId, leagueId) {
+      const res = await fetch(`https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`, {
+        method: "GET",
+        headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" }
+      });
+      const data = await res.json();
+      return data.response.filter(match => match.teams.winner === match.teams.home || match.teams.winner === match.teams.away).length;
+    }
+
+    async function predict() {
+      const input1 = document.getElementById("team1").value.trim();
+      const input2 = document.getElementById("team2").value.trim();
+      const leagueId = document.getElementById("league").value;
       const resultDiv = document.getElementById("result");
 
-      if (!team1 || !team2) {
-        resultDiv.innerText = "יש להזין את שתי הקבוצות.";
+      const team1Name = translateTeamName(input1);
+      const team2Name = translateTeamName(input2);
+
+      if (!team1Name || !team2Name || team1Name === team2Name) {
+        resultDiv.innerText = "יש להזין שמות שונים של קבוצות.";
         return;
       }
 
-      const { team1Chance, team2Chance } = fakeAPI(team1, team2);
+      const team1Data = await getTeamStanding(team1Name, leagueId);
+      const team2Data = await getTeamStanding(team2Name, leagueId);
 
-      const resultText =
-        `${team1} - ${team1Chance}% סיכוי לניצחון\n${team2} - ${team2Chance}% סיכוי לניצחון`;
+      if (!team1Data || !team2Data) {
+        resultDiv.innerText = "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים.";
+        return;
+      }
+
+      const wins1 = await getRecentWins(team1Data.team.id, leagueId);
+      const wins2 = await getRecentWins(team2Data.team.id, leagueId);
+
+      // ניקוד לפי דירוג וניצחונות אחרונים
+      const score1 = (20 - team1Data.rank) * 3 + wins1 * 5;
+      const score2 = (20 - team2Data.rank) * 3 + wins2 * 5;
+
+      const total = score1 + score2 || 1;
+      const team1Chance = Math.round((score1 / total) * 100);
+      const team2Chance = 100 - team1Chance;
+
+      const resultText = `${team1Name} - ${team1Chance}% סיכוי לניצחון\n${team2Name} - ${team2Chance}% סיכוי לניצחון`;
       resultDiv.innerText = resultText;
 
-      addToHistory(`${team1} נגד ${team2} → ${team1Chance}% / ${team2Chance}%`);
-
-      // איפוס קלטים
+      addToHistory(`${team1Name} נגד ${team2Name} → ${team1Chance}% / ${team2Chance}%`);
       document.getElementById("team1").value = "";
       document.getElementById("team2").value = "";
     }
@@ -134,7 +143,7 @@
     function addToHistory(entry) {
       let history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
       history.unshift(entry);
-      history = history.slice(0, 10); // שמור רק 10 אחרונות
+      history = history.slice(0, 10);
       localStorage.setItem("soccerHistory", JSON.stringify(history));
       renderHistory();
     }
@@ -155,7 +164,6 @@
       renderHistory();
     }
 
-    renderHistory(); // טען היסטוריה כשנכנסים
-  </script>
-</body>
+    renderHistory();
+  </script></body>
 </html>
