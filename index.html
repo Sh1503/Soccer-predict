@@ -54,15 +54,20 @@
       "ריאל מדריד": "Real Madrid",
       "ליברפול": "Liverpool",
       "צ'לסי": "Chelsea",
-      "בארסה": "Barcelona",
       "פ.ס.ז": "Paris Saint Germain",
       "באיירן מינכן": "Bayern Munich",
       "אתלטיקו מדריד": "Atletico Madrid",
-      "אוסאסונה": "Osasuna"
+      "אוסאסונה": "Osasuna",
+      "אינטר": "Inter",
+      "מילאן": "AC Milan",
+      "טוטנהאם": "Tottenham",
+      "אייאקס": "Ajax",
+      "מארסיי": "Marseille"
     };
 
     function translateTeamName(name) {
-      return teamsMap[name] || name;
+      const normalized = name.trim();
+      return teamsMap[normalized] || normalized;
     }
 
     async function getTeamId(teamName) {
@@ -130,7 +135,7 @@
         const data = await response.json();
         const predictionData = data.response[0]?.predictions?.winner;
 
-        if (!predictionData || predictionData.percent === "0%") {
+        if (!predictionData || !predictionData.name || !predictionData.percent || predictionData.percent === "0%") {
           const homeRank = await getTeamRanking(homeId);
           const awayRank = await getTeamRanking(awayId);
 
@@ -141,7 +146,7 @@
             resultDiv.innerHTML = 'לא נמצאה תחזית וגם לא הצלחנו לבדוק מיקומים.';
           }
         } else {
-          resultDiv.innerHTML = `<strong>תחזית:</strong> ${predictionData.name} (${predictionData.percent})`;
+          resultDiv.innerHTML = `<strong>תחזית:</strong> ${predictionData.name} (${predictionData.percent || 'לא ידוע'})`;
         }
 
       } catch (error) {
