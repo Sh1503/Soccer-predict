@@ -84,13 +84,14 @@
   </div>
 
   <script>
+    // מפת שמות בעברית לאנגלית - אפשר להרחיב לפי הצורך
     const teamTranslations = {
       "מכבי תל אביב": "Maccabi Tel Aviv",
       "הפועל תל אביב": "Hapoel Tel Aviv",
       "מכבי חיפה": "Maccabi Haifa",
       "הפועל חיפה": "Hapoel Haifa",
       "הפועל באר שבע": "Hapoel Be'er Sheva",
-      'בית"ר ירושלים': "Beitar Jerusalem",
+      "בית"ר ירושלים": "Beitar Jerusalem",
     };
 
     function translateTeamName(name) {
@@ -107,29 +108,31 @@
       );
       const data = await res.json();
 
-      console.log("נתוני טבלה מה-API:", data);
+      if (!data.response || data.response.length === 0) {
+        console.warn("אין טבלה זמינה לליגה:", leagueId);
+        return null;
+      }
 
-      const standings = data.response[0]?.league?.standings[0] || [];
+      const standings = data.response[0].league.standings[0] || [];
 
-      const normalizedInput = teamName
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9א-ת]/g, "");
-      console.log("מחפש התאמה ל:", normalizedInput);
-
+      const normalizedInput = teamName.toLowerCase().replace(/\s+/g, "");
+      
       for (const team of standings) {
-        const normalizedTeamName = team.team.name
-          .toLowerCase()
-          .replace(/[^a-zA-Z0-9א-ת]/g, "");
-        console.log("משווה ל:", normalizedTeamName);
+        const teamNameEn = team.team.name.toLowerCase().replace(/\s+/g, "");
+        const teamNameLocal = (team.team.name_local || "").toLowerCase().replace(/\s+/g, "");
+
         if (
-          normalizedTeamName.includes(normalizedInput) ||
-          normalizedInput.includes(normalizedTeamName)
+          teamNameEn === normalizedInput ||
+          teamNameLocal === normalizedInput ||
+          teamNameEn.includes(normalizedInput) ||
+          normalizedInput.includes(teamNameEn) ||
+          teamNameLocal.includes(normalizedInput) ||
+          normalizedInput.includes(teamNameLocal)
         ) {
-          console.log("נמצא:", team.team.name);
           return team;
         }
       }
-      console.log("לא נמצא התאמה ל:", teamName);
+
       return null;
     }
 
@@ -142,7 +145,7 @@
         }
       );
       const data = await res.json();
-      // סופרים כמה משחקים אחרונים הקבוצה ניצחה
+
       let winsCount = 0;
       data.response.forEach((match) => {
         if (
@@ -181,7 +184,6 @@
       const wins1 = await getRecentWins(team1Data.team.id, leagueId);
       const wins2 = await getRecentWins(team2Data.team.id, leagueId);
 
-      // ניקוד לפי דירוג וניצחונות אחרונים
       const score1 = (20 - team1Data.rank) * 3 + wins1 * 5;
       const score2 = (20 - team2Data.rank) * 3 + wins2 * 5;
 
