@@ -1,49 +1,76 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Soccer Match Predictor</title>
-    <style>
-        body { font-family: Arial; background: #f4f4f4; padding: 20px; text-align: center; }
-        h1 { color: #2c3e50; }
-        input, button { padding: 10px; margin: 10px; font-size: 16px; }
-        #result { margin-top: 20px; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>חיזוי משחקי כדורגל</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 80%;
+      max-width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2980b9;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3498db;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Soccer Match Predictor</h1>
-    <input type="text" id="homeTeam" placeholder="Home Team" />
-    <input type="text" id="awayTeam" placeholder="Away Team" />
-    <button onclick="predict()">Predict</button>
-    <div id="result"></div>
+  <h1>מנבא תוצאת משחק</h1>
+  <input type="text" id="homeTeam" placeholder="קבוצה ביתית">
+  <input type="text" id="awayTeam" placeholder="קבוצה אורחת">
+  <button onclick="predict()">נבא תוצאה</button>
+  <div id="result"></div>
 
-    <script>
-        async function predict() {
-            const home = document.getElementById('homeTeam').value;
-            const away = document.getElementById('awayTeam').value;
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = 'Loading...';
+  <script>
+    async function predict() {
+      const home = document.getElementById('homeTeam').value;
+      const away = document.getElementById('awayTeam').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = 'טוען תוצאה...';
 
-            try {
-                const response = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${home}-${away}`, {
-                    headers: {
-                        'x-apisports-key': '5ce9f8d068bf9962e11d192391618d53',
-                    }
-                });
-                const data = await response.json();
-                if (data.response.length > 0) {
-                    const lastMatch = data.response[0];
-                    const winner = lastMatch.teams.home.winner ? home : (lastMatch.teams.away.winner ? away : 'Draw');
-                    resultDiv.innerHTML = `Prediction: ${winner}`;
-                } else {
-                    resultDiv.innerHTML = 'No match data found.';
-                }
-            } catch (error) {
-                resultDiv.innerHTML = 'Error fetching data.';
-            }
-        }
-    </script>
+      try {
+        const response = await fetch(`https://v3.football.api-sports.io/predictions?home=${home}&away=${away}`, {
+          method: 'GET',
+          headers: {
+            'x-apisports-key': '5ce9f8d068bf9962e11d192391618d53'
+          }
+        });
+
+        const data = await response.json();
+        const prediction = data.response[0]?.predictions?.winner?.name || 'לא נמצאה תוצאה';
+        const percent = data.response[0]?.predictions?.winner?.percent || 'לא ידוע';
+
+        resultDiv.innerHTML = `<strong>סיכוי לניצחון:</strong> ${prediction} (${percent})`;
+      } catch (error) {
+        resultDiv.innerHTML = 'שגיאה בעת שליפת התוצאה. בדוק את שמות הקבוצות ונסה שוב.';
+      }
+    }
+  </script>
 </body>
 </html>
