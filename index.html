@@ -1,153 +1,49 @@
+
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>חיזוי משחקי כדורגל</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
-      color: #333;
-      text-align: center;
-      padding: 30px;
-    }
-    input, button {
-      padding: 10px;
-      margin: 10px;
-      font-size: 16px;
-      width: 80%;
-      max-width: 300px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      background-color: #2980b9;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #3498db;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soccer Match Predictor</title>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; padding: 20px; text-align: center; }
+        h1 { color: #2c3e50; }
+        input, button { padding: 10px; margin: 10px; font-size: 16px; }
+        #result { margin-top: 20px; font-weight: bold; }
+    </style>
 </head>
 <body>
-  <h1>חיזוי תוצאת משחק</h1>
-  <input type="text" id="homeTeam" placeholder="קבוצה ביתית (בעברית או באנגלית)">
-  <input type="text" id="awayTeam" placeholder="קבוצה אורחת (בעברית או באנגלית)">
-  <button onclick="predict()">נבא תוצאה</button>
-  <div id="result"></div>
+    <h1>Soccer Match Predictor</h1>
+    <input type="text" id="homeTeam" placeholder="Home Team" />
+    <input type="text" id="awayTeam" placeholder="Away Team" />
+    <button onclick="predict()">Predict</button>
+    <div id="result"></div>
 
-  <script>
-    const apiKey = "5ce9f8d068bf9962e11d192391618d53";
+    <script>
+        async function predict() {
+            const home = document.getElementById('homeTeam').value;
+            const away = document.getElementById('awayTeam').value;
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
 
-    const teamsMap = {
-      "מנצ'סטר סיטי": "Manchester City",
-      "מנצ'סטר יונייטד": "Manchester United",
-      "ברצלונה": "Barcelona",
-      "יובנטוס": "Juventus",
-      "אטאלנטה": "Atalanta",
-      "ריאל מדריד": "Real Madrid",
-      "ליברפול": "Liverpool",
-      "צ'לסי": "Chelsea",
-      "בארסה": "Barcelona",
-      "פ.ס.ז": "Paris Saint Germain",
-      "באיירן מינכן": "Bayern Munich",
-      "אתלטיקו מדריד": "Atletico Madrid",
-      "אוסאסונה": "Osasuna"
-    };
-
-    function translateTeamName(name) {
-      return teamsMap[name] || name;
-    }
-
-    async function getTeamId(teamName) {
-      const response = await fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
-        method: 'GET',
-        headers: { 'x-apisports-key': apiKey }
-      });
-      const data = await response.json();
-      return data.response[0]?.team?.id || null;
-    }
-
-    async function findFixtureId(homeId, awayId) {
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-
-      const response = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${homeId}-${awayId}`, {
-        method: 'GET',
-        headers: { 'x-apisports-key': apiKey }
-      });
-
-      const data = await response.json();
-      const fixtures = data.response;
-      const fixture = fixtures.find(f => f.fixture.date.startsWith(todayStr));
-      return fixture?.fixture?.id || null;
-    }
-
-    async function getTeamRanking(teamId) {
-      const response = await fetch(`https://v3.football.api-sports.io/standings?season=2024&team=${teamId}`, {
-        method: 'GET',
-        headers: { 'x-apisports-key': apiKey }
-      });
-      const data = await response.json();
-      return data.response[0]?.league?.standings[0]?.find(team => team.team.id === teamId)?.rank || null;
-    }
-
-    async function predict() {
-      let homeName = document.getElementById('homeTeam').value.trim();
-      let awayName = document.getElementById('awayTeam').value.trim();
-
-      homeName = translateTeamName(homeName);
-      awayName = translateTeamName(awayName);
-
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = 'מחפש נתונים...';
-
-      const homeId = await getTeamId(homeName);
-      const awayId = await getTeamId(awayName);
-
-      if (!homeId || !awayId) {
-        resultDiv.innerHTML = 'לא נמצאה אחת הקבוצות. בדוק את האיות או נסה באנגלית.';
-        return;
-      }
-
-      const fixtureId = await findFixtureId(homeId, awayId);
-      if (!fixtureId) {
-        resultDiv.innerHTML = 'לא נמצא משחק שמתקיים היום בין הקבוצות.';
-        return;
-      }
-
-      try {
-        const response = await fetch(`https://v3.football.api-sports.io/predictions?fixture=${fixtureId}`, {
-          method: 'GET',
-          headers: { 'x-apisports-key': apiKey }
-        });
-        const data = await response.json();
-        const predictionData = data.response[0]?.predictions?.winner;
-
-        if (!predictionData || predictionData.percent === "0%") {
-          const homeRank = await getTeamRanking(homeId);
-          const awayRank = await getTeamRanking(awayId);
-
-          if (homeRank && awayRank) {
-            const likelyWinner = homeRank < awayRank ? homeName : awayName;
-            resultDiv.innerHTML = `אין תחזית רשמית. לפי מיקום בטבלה: יתרון ל<strong> ${likelyWinner}</strong>.`;
-          } else {
-            resultDiv.innerHTML = 'לא נמצאה תחזית וגם לא הצלחנו לבדוק מיקומים.';
-          }
-        } else {
-          resultDiv.innerHTML = `<strong>תחזית:</strong> ${predictionData.name} (${predictionData.percent})`;
+            try {
+                const response = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${home}-${away}`, {
+                    headers: {
+                        'x-apisports-key': '5ce9f8d068bf9962e11d192391618d53',
+                    }
+                });
+                const data = await response.json();
+                if (data.response.length > 0) {
+                    const lastMatch = data.response[0];
+                    const winner = lastMatch.teams.home.winner ? home : (lastMatch.teams.away.winner ? away : 'Draw');
+                    resultDiv.innerHTML = `Prediction: ${winner}`;
+                } else {
+                    resultDiv.innerHTML = 'No match data found.';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = 'Error fetching data.';
+            }
         }
-
-      } catch (error) {
-        resultDiv.innerHTML = 'שגיאה בעת שליפת התחזית.';
-      }
-    }
-  </script>
+    </script>
 </body>
 </html>
