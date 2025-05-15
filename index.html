@@ -37,16 +37,35 @@
 </head>
 <body>
   <h1>חיזוי תוצאת משחק</h1>
-  <input type="text" id="homeTeam" placeholder="קבוצה ביתית">
-  <input type="text" id="awayTeam" placeholder="קבוצה אורחת">
+  <input type="text" id="homeTeam" placeholder="קבוצה ביתית (בעברית או באנגלית)">
+  <input type="text" id="awayTeam" placeholder="קבוצה אורחת (בעברית או באנגלית)">
   <button onclick="predict()">נבא תוצאה</button>
   <div id="result"></div>
 
   <script>
     const apiKey = "5ce9f8d068bf9962e11d192391618d53";
 
+    // מילון תרגום שמות קבוצות מעברית לאנגלית
+    const teamsMap = {
+      "מנצ'סטר סיטי": "Manchester City",
+      "מנצ'סטר יונייטד": "Manchester United",
+      "ברצלונה": "Barcelona",
+      "יובנטוס": "Juventus",
+      "אטאלנטה": "Atalanta",
+      "ריאל מדריד": "Real Madrid",
+      "בארסה": "Barcelona",
+      "צ'לסי": "Chelsea",
+      "ליברפול": "Liverpool",
+      "פ.ס.ז": "Paris Saint Germain",
+      // הוסף עוד קבוצות כרצונך כאן
+    };
+
+    function translateTeamName(name) {
+      return teamsMap[name] || name;
+    }
+
     async function getTeamId(teamName) {
-      const response = await fetch(`https://v3.football.api-sports.io/teams?search=${teamName}`, {
+      const response = await fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
         method: 'GET',
         headers: { 'x-apisports-key': apiKey }
       });
@@ -58,13 +77,21 @@
       const today = new Date().toISOString().split('T')[0];
       const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const response = await fetch(`https://v3.football.api-sports.io/fixtures?team=${homeId}&from=${today}&to=${nextWeek}`, {
-        method: 'GET',
-        headers: { 'x-apisports-key': apiKey }
-      });
-      const data = await response.json();
+      const responses = await Promise.all([
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${homeId}&from=${today}&to=${nextWeek}`, {
+          method: 'GET',
+          headers: { 'x-apisports-key': apiKey }
+        }),
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${awayId}&from=${today}&to=${nextWeek}`, {
+          method: 'GET',
+          headers: { 'x-apisports-key': apiKey }
+        })
+      ]);
 
-      const fixture = data.response.find(f =>
+      const [homeData, awayData] = await Promise.all(responses.map(r => r.json()));
+      const allFixtures = [...homeData.response, ...awayData.response];
+
+      const fixture = allFixtures.find(f =>
         (f.teams.home.id === homeId && f.teams.away.id === awayId) ||
         (f.teams.home.id === awayId && f.teams.away.id === homeId)
       );
@@ -73,8 +100,12 @@
     }
 
     async function predict() {
-      const homeName = document.getElementById('homeTeam').value.trim();
-      const awayName = document.getElementById('awayTeam').value.trim();
+      let homeName = document.getElementById('homeTeam').value.trim();
+      let awayName = document.getElementById('awayTeam').value.trim();
+
+      homeName = translateTeamName(homeName);
+      awayName = translateTeamName(awayName);
+
       const resultDiv = document.getElementById('result');
       resultDiv.innerHTML = 'מחפש נתונים...';
 
@@ -82,7 +113,7 @@
       const awayId = await getTeamId(awayName);
 
       if (!homeId || !awayId) {
-        resultDiv.innerHTML = 'לא נמצאה אחת הקבוצות. ודא שהשמות כתובים נכון באנגלית.';
+        resultDiv.innerHTML = 'לא נמצאה אחת הקבוצות. ודא שהשמות כתובים נכון.';
         return;
       }
 
