@@ -3,7 +3,7 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>תחזית כדורגל</title>
+  <title>תחזית כדורגל - API אמיתי</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -13,12 +13,10 @@
       padding: 50px;
       color: #333;
     }
-
     h1 {
       font-size: 32px;
       margin-bottom: 30px;
     }
-
     input {
       padding: 12px;
       width: 250px;
@@ -28,7 +26,6 @@
       border-radius: 8px;
       font-size: 16px;
     }
-
     button {
       padding: 12px 24px;
       background-color: #007bff;
@@ -40,75 +37,29 @@
       transition: background-color 0.3s;
       margin: 5px;
     }
-
     button:hover {
       background-color: #0056b3;
     }
-
     .result {
       margin-top: 30px;
       font-size: 20px;
       font-weight: bold;
       white-space: pre-line;
     }
-
-    .history {
-      margin-top: 40px;
-      text-align: right;
-      direction: rtl;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .history h3 {
-      margin-bottom: 10px;
-    }
-
-    .history ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .history li {
-      background-color: #fff;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-    }
   </style>
 </head>
 <body>
-  <h1>בדיקת סיכויי ניצחון</h1>
-  <input type="text" id="team1" placeholder="קבוצה ראשונה">
+  <h1>תחזית מבוססת API</h1>
+  <input type="text" id="team1" placeholder="קבוצה ביתית">
   <br>
-  <input type="text" id="team2" placeholder="קבוצה שנייה">
+  <input type="text" id="team2" placeholder="קבוצה אורחת">
   <br>
   <button onclick="predict()">חשב</button>
-  <button onclick="clearHistory()">נקה היסטוריה</button>
 
   <div class="result" id="result"></div>
 
-  <div class="history">
-    <h3>היסטוריית חיפושים:</h3>
-    <ul id="historyList"></ul>
-  </div>
-
   <script>
-    function fakeAPI(team1, team2) {
-      const base1 = team1.length * 7 % 100;
-      const base2 = team2.length * 5 % 100;
-      let total = base1 + base2;
-      if (total === 0) total = 1;
-
-      const team1Chance = Math.round((base1 / total) * 100);
-      const team2Chance = 100 - team1Chance;
-
-      return { team1Chance, team2Chance };
-    }
-
-    function predict() {
+    async function predict() {
       const team1 = document.getElementById("team1").value.trim();
       const team2 = document.getElementById("team2").value.trim();
       const resultDiv = document.getElementById("result");
@@ -118,44 +69,39 @@
         return;
       }
 
-      const { team1Chance, team2Chance } = fakeAPI(team1, team2);
+      resultDiv.innerText = "טוען תחזית...";
 
-      const resultText =
-        `${team1} - ${team1Chance}% סיכוי לניצחון\n${team2} - ${team2Chance}% סיכוי לניצחון`;
-      resultDiv.innerText = resultText;
+      try {
+        const response = await fetch(`https://v3.football.api-sports.io/predictions?home=${team1}&away=${team2}`, {
+          method: "GET",
+          headers: {
+            "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53"
+          }
+        });
 
-      addToHistory(`${team1} נגד ${team2} → ${team1Chance}% / ${team2Chance}%`);
+        const data = await response.json();
 
-      // איפוס קלטים
-      document.getElementById("team1").value = "";
-      document.getElementById("team2").value = "";
+        if (!data.response || data.response.length === 0) {
+          resultDiv.innerText = "לא נמצאה תחזית מתאימה לקבוצות האלו.";
+          return;
+        }
+
+        const prediction = data.response[0].predictions;
+
+        const win1 = prediction.winner.name === team1 ? prediction.winner.percent : "—";
+        const win2 = prediction.winner.name === team2 ? prediction.winner.percent : "—";
+        const advice = prediction.advice;
+
+        resultDiv.innerText =
+          `${team1} → סיכוי לניצחון: ${win1}
+${team2} → סיכוי לניצחון: ${win2}
+
+המלצת המערכת: ${advice}`;
+      } catch (error) {
+        resultDiv.innerText = "שגיאה בהבאת תחזית. נסה שוב מאוחר יותר.";
+        console.error(error);
+      }
     }
-
-    function addToHistory(entry) {
-      let history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
-      history.unshift(entry);
-      history = history.slice(0, 10); // שמור רק 10 אחרונות
-      localStorage.setItem("soccerHistory", JSON.stringify(history));
-      renderHistory();
-    }
-
-    function renderHistory() {
-      const list = document.getElementById("historyList");
-      list.innerHTML = "";
-      const history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
-      history.forEach(item => {
-        const li = document.createElement("li");
-        li.innerText = item;
-        list.appendChild(li);
-      });
-    }
-
-    function clearHistory() {
-      localStorage.removeItem("soccerHistory");
-      renderHistory();
-    }
-
-    renderHistory(); // טען היסטוריה כשנכנסים
   </script>
 </body>
 </html>
