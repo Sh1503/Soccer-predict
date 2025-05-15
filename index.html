@@ -1,272 +1,49 @@
+
 <!DOCTYPE html>
-<html lang="he" >
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>תחזית כדורגל משופרת עם טיפול בשגיאות</title>
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(to bottom, #f9f9f9, #e0e0e0);
-      direction: rtl;
-      text-align: center;
-      padding: 50px;
-      color: #333;
-    }
-    select,
-    input,
-    button {
-      margin: 10px;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 8px;
-    }
-    input,
-    select {
-      width: 250px;
-      max-width: 90%;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .result {
-      margin-top: 30px;
-      font-size: 20px;
-      font-weight: bold;
-      white-space: pre-line;
-      min-height: 50px;
-    }
-    .history {
-      margin-top: 40px;
-      text-align: right;
-      direction: rtl;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soccer Match Predictor</title>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; padding: 20px; text-align: center; }
+        h1 { color: #2c3e50; }
+        input, button { padding: 10px; margin: 10px; font-size: 16px; }
+        #result { margin-top: 20px; font-weight: bold; }
+    </style>
 </head>
 <body>
-  <h1>תחזית כדורגל לפי טבלה וביצועים</h1>
-  <select id="league">
-    <option value="39">אנגליה - פרמייר ליג</option>
-    <option value="140">ספרד - לה ליגה</option>
-    <option value="135">איטליה - סריה א'</option>
-    <option value="78">גרמניה - בונדסליגה</option>
-    <option value="61">צרפת - ליג 1</option>
-    <option value="285">ישראל - ליגת העל</option>
-  </select>
-  <br />
-  <input
-    type="text"
-    id="team1"
-    placeholder="קבוצה ראשונה (עברית או אנגלית)"
-  /><br />
-  <input
-    type="text"
-    id="team2"
-    placeholder="קבוצה שנייה (עברית או אנגלית)"
-  /><br />
-  <button onclick="predict()">חשב</button>
-  <button onclick="clearHistory()">נקה היסטוריה</button>
+    <h1>Soccer Match Predictor</h1>
+    <input type="text" id="homeTeam" placeholder="Home Team" />
+    <input type="text" id="awayTeam" placeholder="Away Team" />
+    <button onclick="predict()">Predict</button>
+    <div id="result"></div>
 
-  <div class="result" id="result"></div>
+    <script>
+        async function predict() {
+            const home = document.getElementById('homeTeam').value;
+            const away = document.getElementById('awayTeam').value;
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
 
-  <div class="history">
-    <h3>היסטוריית חיפושים:</h3>
-    <ul id="historyList"></ul>
-  </div>
-
-  <script>
-    // מפת שמות בעברית לאנגלית - אפשר להרחיב לפי הצורך
-    const teamTranslations = {
-      "מכבי תל אביב": "Maccabi Tel Aviv",
-      "הפועל תל אביב": "Hapoel Tel Aviv",
-      "מכבי חיפה": "Maccabi Haifa",
-      "הפועל חיפה": "Hapoel Haifa",
-      "הפועל באר שבע": "Hapoel Be'er Sheva",
-      "בית"ר ירושלים": "Beitar Jerusalem",
-    };
-
-    function translateTeamName(name) {
-      return teamTranslations[name.trim()] || name.trim();
-    }
-
-    async function getTeamStanding(teamName, leagueId) {
-      try {
-        console.log(`Fetching standings for league ${leagueId}...`);
-        const res = await fetch(
-          `https://v3.football.api-sports.io/standings?season=2024&league=${leagueId}`,
-          {
-            method: "GET",
-            headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
-          }
-        );
-        if (!res.ok) {
-          console.error("Fetch error: HTTP status", res.status);
-          return null;
+            try {
+                const response = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${home}-${away}`, {
+                    headers: {
+                        'x-apisports-key': '5ce9f8d068bf9962e11d192391618d53',
+                    }
+                });
+                const data = await response.json();
+                if (data.response.length > 0) {
+                    const lastMatch = data.response[0];
+                    const winner = lastMatch.teams.home.winner ? home : (lastMatch.teams.away.winner ? away : 'Draw');
+                    resultDiv.innerHTML = `Prediction: ${winner}`;
+                } else {
+                    resultDiv.innerHTML = 'No match data found.';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = 'Error fetching data.';
+            }
         }
-        const data = await res.json();
-
-        if (!data.response || data.response.length === 0) {
-          console.warn("אין טבלה זמינה לליגה:", leagueId);
-          return null;
-        }
-
-        const standings = data.response[0].league.standings[0] || [];
-
-        const normalizedInput = teamName.toLowerCase().replace(/\s+/g, "");
-
-        for (const team of standings) {
-          const teamNameEn = team.team.name.toLowerCase().replace(/\s+/g, "");
-          const teamNameLocal = (team.team.name_local || "")
-            .toLowerCase()
-            .replace(/\s+/g, "");
-
-          if (
-            teamNameEn === normalizedInput ||
-            teamNameLocal === normalizedInput ||
-            teamNameEn.includes(normalizedInput) ||
-            normalizedInput.includes(teamNameEn) ||
-            teamNameLocal.includes(normalizedInput) ||
-            normalizedInput.includes(teamNameLocal)
-          ) {
-            console.log(`Team "${teamName}" matched with "${team.team.name}"`);
-            return team;
-          }
-        }
-
-        console.warn(`לא נמצאה קבוצה בשם "${teamName}" בטבלה של הליגה.`);
-        return null;
-      } catch (error) {
-        console.error("Error fetching standings:", error);
-        return null;
-      }
-    }
-
-    async function getRecentWins(teamId, leagueId) {
-      try {
-        console.log(`Fetching recent fixtures for team ID ${teamId}...`);
-        const res = await fetch(
-          `https://v3.football.api-sports.io/fixtures?team=${teamId}&league=${leagueId}&season=2024&last=5`,
-          {
-            method: "GET",
-            headers: { "x-apisports-key": "5ce9f8d068bf9962e11d192391618d53" },
-          }
-        );
-        if (!res.ok) {
-          console.error("Fetch error: HTTP status", res.status);
-          return 0;
-        }
-        const data = await res.json();
-
-        let winsCount = 0;
-        data.response.forEach((match) => {
-          if (
-            (match.teams.home.id === teamId && match.teams.winner === "home") ||
-            (match.teams.away.id === teamId && match.teams.winner === "away")
-          ) {
-            winsCount++;
-          }
-        });
-        console.log(`Team ID ${teamId} won ${winsCount} of last 5 matches.`);
-        return winsCount;
-      } catch (error) {
-        console.error("Error fetching recent fixtures:", error);
-        return 0;
-      }
-    }
-
-    async function predict() {
-      try {
-        console.log("Predict called");
-        const input1 = document.getElementById("team1").value.trim();
-        const input2 = document.getElementById("team2").value.trim();
-        const leagueId = document.getElementById("league").value;
-        const resultDiv = document.getElementById("result");
-
-        const team1Name = translateTeamName(input1);
-        const team2Name = translateTeamName(input2);
-
-        if (!team1Name || !team2Name) {
-          resultDiv.innerText = "יש להזין את שתי הקבוצות.";
-          return;
-        }
-
-        if (team1Name === team2Name) {
-          resultDiv.innerText = "יש להזין שמות שונים של קבוצות.";
-          return;
-        }
-
-        resultDiv.innerText = "טוען תחזית...";
-
-        const team1Data = await getTeamStanding(team1Name, leagueId);
-        const team2Data = await getTeamStanding(team2Name, leagueId);
-
-        if (!team1Data || !team2Data) {
-          resultDiv.innerText =
-            "קבוצה לא נמצאה בטבלת הליגה. ודא שהשמות נכונים ושהליגה תואמת.";
-          return;
-        }
-
-        const wins1 = await getRecentWins(team1Data.team.id, leagueId);
-        const wins2 = await getRecentWins(team2Data.team.id, leagueId);
-
-        // חישוב נקודות לפי דרוג בטבלה וזכיות אחרונות (משקל לדוגמה)
-        const score1 = (20 - team1Data.rank) * 3 + wins1 * 5;
-        const score2 = (20 - team2Data.rank) * 3 + wins2 * 5;
-
-        const total = score1 + score2 || 1;
-        const team1Chance = Math.round((score1 / total) * 100);
-        const team2Chance = 100 - team1Chance;
-
-        const resultText = `${team1Name} - ${team1Chance}% סיכוי לניצחון\n${team2Name} - ${team2Chance}% סיכוי לניצחון`;
-        resultDiv.innerText = resultText;
-
-        addToHistory(
-          `${team1Name} נגד ${team2Name} → ${team1Chance}% / ${team2Chance}%`
-        );
-        document.getElementById("team1").value = "";
-        document.getElementById("team2").value = "";
-      } catch (error) {
-        console.error("Error in predict:", error);
-        document.getElementById("result").innerText =
-          "אירעה שגיאה בחישוב התחזית. נסה שוב.";
-      }
-    }
-
-    function addToHistory(entry) {
-      let history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
-      history.unshift(entry);
-      history = history.slice(0, 10);
-      localStorage.setItem("soccerHistory", JSON.stringify(history));
-      renderHistory();
-    }
-
-    function renderHistory() {
-      const list = document.getElementById("historyList");
-      list.innerHTML = "";
-      const history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
-      history.forEach((item) => {
-        const li = document.createElement("li");
-        li.innerText = item;
-        list.appendChild(li);
-      });
-    }
-
-    function clearHistory() {
-      localStorage.removeItem("soccerHistory");
-      renderHistory();
-    }
-
-    renderHistory();
-  </script>
+    </script>
 </body>
 </html>
