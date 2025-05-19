@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>תחזית כדורגל בעברית</title>
+  <title>תחזית כדורגל בזמן אמת</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -23,13 +23,12 @@
       box-shadow: 0 6px 24px rgba(0,0,0,0.1);
     }
 
-    select, button {
+    input, button {
       padding: 12px;
       margin: 10px;
       font-size: 16px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      width: 80%;
     }
 
     button {
@@ -56,26 +55,9 @@
 </head>
 <body>
   <div class="container">
-    <h1>תחזית סיכויי ניצחון - ליגת העל</h1>
-
-    <select id="team1">
-      <option value="">בחר קבוצה ראשונה</option>
-      <option value="Maccabi Haifa">מכבי חיפה</option>
-      <option value="Maccabi Tel Aviv">מכבי תל אביב</option>
-      <option value="Hapoel Tel Aviv">הפועל תל אביב</option>
-      <option value="Beitar Jerusalem">בית"ר ירושלים</option>
-      <option value="Hapoel Haifa">הפועל חיפה</option>
-    </select>
-
-    <select id="team2">
-      <option value="">בחר קבוצה שנייה</option>
-      <option value="Maccabi Haifa">מכבי חיפה</option>
-      <option value="Maccabi Tel Aviv">מכבי תל אביב</option>
-      <option value="Hapoel Tel Aviv">הפועל תל אביב</option>
-      <option value="Beitar Jerusalem">בית"ר ירושלים</option>
-      <option value="Hapoel Haifa">הפועל חיפה</option>
-    </select>
-
+    <h1>חיזוי סיכויי ניצחון - נתונים בזמן אמת</h1>
+    <input type="text" id="team1" placeholder="קבוצה ראשונה">
+    <input type="text" id="team2" placeholder="קבוצה שנייה">
     <br>
     <button onclick="predict()">חשב</button>
     <div class="result" id="result"></div>
@@ -83,7 +65,7 @@
 
   <script>
     const API_KEY = "5ce9f8d068bf9962e11d192391618d53";
-    const LEAGUE_ID = 271; // ליגת העל
+    const LEAGUE_ID = 39; // ליגה: פרמייר ליג (אפשר לשנות)
     const SEASON = 2023;
 
     async function getTeamIdByName(name) {
@@ -94,7 +76,7 @@
       if (data.response.length > 0) {
         return data.response[0].team.id;
       } else {
-        throw new Error(`לא נמצאה קבוצה בשם ${name}`);
+        throw new Error(`קבוצה "${name}" לא נמצאה.`);
       }
     }
 
@@ -116,25 +98,23 @@
     }
 
     async function predict() {
-      const team1Name = document.getElementById("team1").value;
-      const team2Name = document.getElementById("team2").value;
-      const team1Hebrew = document.getElementById("team1").selectedOptions[0].text;
-      const team2Hebrew = document.getElementById("team2").selectedOptions[0].text;
+      const team1 = document.getElementById("team1").value.trim();
+      const team2 = document.getElementById("team2").value.trim();
       const resultDiv = document.getElementById("result");
       resultDiv.classList.remove("error");
       resultDiv.innerText = "טוען נתונים...";
 
       try {
-        if (!team1Name || !team2Name || team1Name === team2Name) {
-          throw new Error("בחר שתי קבוצות שונות.");
+        if (!team1 || !team2 || team1 === team2) {
+          throw new Error("יש להזין שתי קבוצות שונות.");
         }
 
-        const [id1, id2] = await Promise.all([getTeamIdByName(team1Name), getTeamIdByName(team2Name)]);
+        const [id1, id2] = await Promise.all([getTeamIdByName(team1), getTeamIdByName(team2)]);
         const [stats1, stats2] = await Promise.all([getTeamStats(id1), getTeamStats(id2)]);
         const { team1Chance, team2Chance } = calculatePrediction(stats1, stats2);
 
         resultDiv.innerText =
-          `${team1Hebrew} - ${team1Chance}% סיכוי לניצחון\n${team2Hebrew} - ${team2Chance}% סיכוי לניצחון`;
+          `${team1} - ${team1Chance}% סיכוי לנצחון\n${team2} - ${team2Chance}% סיכוי לנצחון`;
       } catch (error) {
         resultDiv.classList.add("error");
         resultDiv.innerText = error.message;
