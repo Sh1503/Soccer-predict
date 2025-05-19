@@ -360,4 +360,33 @@
     }
 
     function clearHistory() {
-      localStorage
+      localStorage.removeItem("soccerHistory");
+      renderHistory();
+    }
+
+    leagueSelect.addEventListener("change", () => {
+      loadTeams(leagueSelect.value);
+      resultDiv.innerText = "";
+      predictBtn.disabled = true;
+    });
+
+    team1Select.addEventListener("change", () => {
+      checkPredictReady();
+    });
+
+    team2Select.addEventListener("change", () => {
+      checkPredictReady();
+    });
+
+    predictBtn.addEventListener("click", predict);
+    clearHistoryBtn.addEventListener("click", clearHistory);
+
+    function checkPredictReady() {
+      predictBtn.disabled = !(team1Select.value && team2Select.value && team1Select.value !== team2Select.value);
+    }
+
+    loadLeagues();
+    renderHistory();
+  </script>
+</body>
+</html>
