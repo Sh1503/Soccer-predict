@@ -1,147 +1,104 @@
 <!DOCTYPE html>
 <html lang="he">
 <head>
-  <meta charset="UTF-8" />
-  <title>תחזית כדורגל עם API אמיתי</title>
+  <meta charset="UTF-8">
+  <title>תחזית כדורגל מקצועית</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
-    select, button { padding: 8px; margin: 10px 0; width: 100%; max-width: 400px; }
-    #result { margin-top: 20px; font-weight: bold; white-space: pre-line; }
+    body {
+      direction: rtl;
+      font-family: sans-serif;
+      text-align: center;
+      background: #f4f4f4;
+      color: #333;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 12px;
+      margin: 10px 5px;
+      font-size: 16px;
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      white-space: pre-line;
+    }
   </style>
 </head>
 <body>
-  <h1>תחזית כדורגל - בחר ליגה וקבוצות</h1>
-  
-  <label for="leagueSelect">בחר ליגה:</label>
-  <select id="leagueSelect">
-    <option value="">טוען ליגות...</option>
-  </select>
-
-  <label for="team1Select">בחר קבוצה 1:</label>
-  <select id="team1Select" disabled>
-    <option value="">בחר קודם ליגה</option>
-  </select>
-
-  <label for="team2Select">בחר קבוצה 2:</label>
-  <select id="team2Select" disabled>
-    <option value="">בחר קודם ליגה</option>
-  </select>
-
-  <button id="predictBtn" disabled>חשב תחזית</button>
-
-  <div id="result"></div>
+  <div class="container">
+    <h1>בדיקת סיכויי ניצחון</h1>
+    <input type="text" id="team1" placeholder="קבוצה ראשונה">
+    <input type="text" id="team2" placeholder="קבוצה שנייה">
+    <button onclick="predict()">חשב</button>
+    <div class="result" id="result"></div>
+  </div>
 
   <script>
-    const apiKey = "5ce9f8d068bf9962e11d192391618d53"; // המפתח שלך פה
-    const leagueSelect = document.getElementById('leagueSelect');
-    const team1Select = document.getElementById('team1Select');
-    const team2Select = document.getElementById('team2Select');
-    const predictBtn = document.getElementById('predictBtn');
-    const resultDiv = document.getElementById('result');
+    const apiKey = "5ce9f8d068bf9962e11d192391618d53";
 
-    async function loadLeagues() {
-      leagueSelect.innerHTML = "<option value=''>טוען ליגות...</option>";
+    async function searchTeam(teamName) {
+      const url = `https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`;
       try {
-        const res = await fetch('https://api-football-v1.p.rapidapi.com/v3/leagues', {
-          method: 'GET',
+        const res = await fetch(url, {
           headers: {
-            'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-            'x-rapidapi-key': apiKey
+            "x-apisports-key": apiKey
           }
         });
         const data = await res.json();
-        if (data.response) {
-          // סינון לליגות גדולות כולל ליגת העל הישראלית לפי דוגמא
-          const leagues = data.response.filter(l => 
-            ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Israeli Premier League'].includes(l.league.name)
-          );
-
-          leagueSelect.innerHTML = '<option value="">בחר ליגה</option>';
-          leagues.forEach(league => {
-            const option = document.createElement('option');
-            option.value = league.league.id;
-            option.text = league.league.name + " - " + league.country.name;
-            leagueSelect.appendChild(option);
-          });
-        } else {
-          leagueSelect.innerHTML = '<option value="">לא נמצאו ליגות</option>';
-        }
+        return data.response.length > 0 ? data.response[0] : null;
       } catch (err) {
-        console.error(err);
-        leagueSelect.innerHTML = '<option value="">שגיאה בטעינת ליגות</option>';
+        console.error("שגיאה בחיפוש קבוצה:", err);
+        return null;
       }
     }
 
-    async function loadTeams(leagueId) {
-      team1Select.disabled = true;
-      team2Select.disabled = true;
-      team1Select.innerHTML = "<option>טוען קבוצות...</option>";
-      team2Select.innerHTML = "<option>טוען קבוצות...</option>";
-      predictBtn.disabled = true;
-      try {
-        const res = await fetch(`https://api-football-v1.p.rapidapi.com/v3/teams?league=${leagueId}&season=2023`, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-            'x-rapidapi-key': apiKey
-          }
-        });
-        const data = await res.json();
-        if (data.response && data.response.length > 0) {
-          team1Select.innerHTML = '<option value="">בחר קבוצה 1</option>';
-          team2Select.innerHTML = '<option value="">בחר קבוצה 2</option>';
-          data.response.forEach(team => {
-            const option1 = document.createElement('option');
-            option1.value = team.team.id;
-            option1.text = team.team.name;
-            team1Select.appendChild(option1);
+    async function predict() {
+      const team1Input = document.getElementById("team1").value.trim();
+      const team2Input = document.getElementById("team2").value.trim();
+      const resultDiv = document.getElementById("result");
 
-            const option2 = document.createElement('option');
-            option2.value = team.team.id;
-            option2.text = team.team.name;
-            team2Select.appendChild(option2);
-          });
-          team1Select.disabled = false;
-          team2Select.disabled = false;
-        } else {
-          team1Select.innerHTML = "<option>לא נמצאו קבוצות</option>";
-          team2Select.innerHTML = "<option>לא נמצאו קבוצות</option>";
-        }
-      } catch (err) {
-        console.error(err);
-        team1Select.innerHTML = "<option>שגיאה בטעינת קבוצות</option>";
-        team2Select.innerHTML = "<option>שגיאה בטעינת קבוצות</option>";
+      if (!team1Input || !team2Input) {
+        resultDiv.innerText = "יש להזין את שתי הקבוצות.";
+        return;
       }
-    }
 
-    function checkPredictReady() {
-      predictBtn.disabled = !(team1Select.value && team2Select.value && team1Select.value !== team2Select.value);
-    }
-
-    leagueSelect.addEventListener('change', () => {
-      if (leagueSelect.value) {
-        loadTeams(leagueSelect.value);
-        resultDiv.textContent = "";
-      } else {
-        team1Select.innerHTML = '<option>בחר קודם ליגה</option>';
-        team2Select.innerHTML = '<option>בחר קודם ליגה</option>';
-        team1Select.disabled = true;
-        team2Select.disabled = true;
-        predictBtn.disabled = true;
+      if (team1Input === team2Input) {
+        resultDiv.innerText = "יש להזין שתי קבוצות שונות.";
+        return;
       }
-    });
 
-    team1Select.addEventListener('change', checkPredictReady);
-    team2Select.addEventListener('change', checkPredictReady);
+      resultDiv.innerText = "טוען נתונים...";
+      const [team1, team2] = await Promise.all([
+        searchTeam(team1Input),
+        searchTeam(team2Input)
+      ]);
 
-    predictBtn.addEventListener('click', () => {
-      const team1Name = team1Select.options[team1Select.selectedIndex].text;
-      const team2Name = team2Select.options[team2Select.selectedIndex].text;
-      // כאן תוכל להוסיף לוגיקה אמיתית או להציג מידע מה-API לפי הקבוצות
-      resultDiv.textContent = `תחזית בין:\n${team1Name}\nל-\n${team2Name}\n(כאן תוסיף אלגוריתם אמיתי)`;
-    });
+      if (!team1 || !team2) {
+        resultDiv.innerText = "לפחות אחת הקבוצות לא נמצאה.";
+        return;
+      }
 
-    loadLeagues();
+      // חישוב מדומה לפי אורך השם של הקבוצה
+      const base1 = team1.team.name.length * 5 % 100;
+      const base2 = team2.team.name.length * 3 % 100;
+      const total = base1 + base2 || 1;
+      const chance1 = Math.round((base1 / total) * 100);
+      const chance2 = 100 - chance1;
+
+      resultDiv.innerText =
+        `${team1.team.name} - ${chance1}% סיכוי לניצחון\n` +
+        `${team2.team.name} - ${chance2}% סיכוי לניצחון`;
+    }
   </script>
 </body>
 </html>
