@@ -1,44 +1,69 @@
-
 <!DOCTYPE html>
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>תחזית כדורגל</title>
+  <title>תחזית כדורגל מקצועית</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Alef&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary-color: #007bff;
+      --bg-color: #f4f4f4;
+      --text-color: #333;
+      --card-bg: #fff;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #eee;
+      --card-bg: #1f1f1f;
+    }
+
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(to bottom, #f9f9f9, #e0e0e0);
+      margin: 0;
+      font-family: 'Alef', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
       direction: rtl;
       text-align: center;
-      padding: 50px;
-      color: #333;
+      padding: 40px 20px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
     }
 
     h1 {
       font-size: 32px;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
     input {
+      width: 90%;
       padding: 12px;
-      width: 250px;
-      max-width: 90%;
-      margin: 10px;
-      border: 1px solid #ccc;
+      margin: 10px 0;
       border-radius: 8px;
+      border: 1px solid #ccc;
       font-size: 16px;
+      background: #fff;
     }
 
     button {
       padding: 12px 24px;
-      background-color: #007bff;
-      color: white;
+      margin: 10px 5px;
       border: none;
       border-radius: 8px;
+      background-color: var(--primary-color);
+      color: white;
       font-size: 16px;
       cursor: pointer;
       transition: background-color 0.3s;
-      margin: 5px;
     }
 
     button:hover {
@@ -49,16 +74,20 @@
       margin-top: 30px;
       font-size: 20px;
       font-weight: bold;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
       white-space: pre-line;
     }
 
+    .result.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     .history {
-      margin-top: 40px;
       text-align: right;
-      direction: rtl;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
+      margin-top: 40px;
     }
 
     .history h3 {
@@ -71,34 +100,73 @@
     }
 
     .history li {
-      background-color: #fff;
-      padding: 8px 12px;
+      background: #eaeaea;
       margin-bottom: 6px;
+      padding: 10px;
       border-radius: 6px;
-      border: 1px solid #ddd;
+      font-size: 14px;
+    }
+
+    body.dark .history li {
+      background: #2c2c2c;
+    }
+
+    .toggle-dark {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: transparent;
+      border: 2px solid var(--primary-color);
+      border-radius: 30px;
+      padding: 6px 16px;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .toggle-dark:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 20px;
+      }
+
+      input {
+        font-size: 14px;
+      }
+
+      button {
+        font-size: 14px;
+        padding: 10px 18px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>בדיקת סיכויי ניצחון</h1>
-  <input type="text" id="team1" placeholder="קבוצה ראשונה">
-  <br>
-  <input type="text" id="team2" placeholder="קבוצה שנייה">
-  <br>
-  <button onclick="predict()">חשב</button>
-  <button onclick="clearHistory()">נקה היסטוריה</button>
+  <button class="toggle-dark" onclick="toggleDarkMode()">מצב לילה</button>
 
-  <div class="result" id="result"></div>
+  <div class="container">
+    <h1>בדיקת סיכויי ניצחון</h1>
+    <input type="text" id="team1" placeholder="קבוצה ראשונה">
+    <input type="text" id="team2" placeholder="קבוצה שנייה">
+    <button onclick="predict()">חשב</button>
+    <button onclick="clearHistory()">נקה היסטוריה</button>
 
-  <div class="history">
-    <h3>היסטוריית חיפושים:</h3>
-    <ul id="historyList"></ul>
+    <div class="result" id="result"></div>
+
+    <div class="history">
+      <h3>היסטוריית חיפושים:</h3>
+      <ul id="historyList"></ul>
+    </div>
   </div>
 
   <script>
     function fakeAPI(team1, team2) {
-      const base1 = team1.length * 7 % 100;
-      const base2 = team2.length * 5 % 100;
+      const base1 = team1.toLowerCase().length * 7 % 100;
+      const base2 = team2.toLowerCase().length * 5 % 100;
       let total = base1 + base2;
       if (total === 0) total = 1;
 
@@ -115,18 +183,28 @@
 
       if (!team1 || !team2) {
         resultDiv.innerText = "יש להזין את שתי הקבוצות.";
+        resultDiv.classList.add("show");
+        return;
+      }
+
+      if (team1 === team2) {
+        resultDiv.innerText = "יש להזין שתי קבוצות שונות.";
+        resultDiv.classList.add("show");
         return;
       }
 
       const { team1Chance, team2Chance } = fakeAPI(team1, team2);
-
       const resultText =
         `${team1} - ${team1Chance}% סיכוי לניצחון\n${team2} - ${team2Chance}% סיכוי לניצחון`;
+
       resultDiv.innerText = resultText;
+      resultDiv.classList.remove("show");
+      void resultDiv.offsetWidth;
+      resultDiv.classList.add("show");
 
-      addToHistory(`${team1} נגד ${team2} → ${team1Chance}% / ${team2Chance}%`);
+      const timestamp = new Date().toLocaleString("he-IL");
+      addToHistory(`${team1} נגד ${team2} → ${team1Chance}% / ${team2Chance}% (${timestamp})`);
 
-      // איפוס קלטים
       document.getElementById("team1").value = "";
       document.getElementById("team2").value = "";
     }
@@ -134,7 +212,7 @@
     function addToHistory(entry) {
       let history = JSON.parse(localStorage.getItem("soccerHistory")) || [];
       history.unshift(entry);
-      history = history.slice(0, 10); // שמור רק 10 אחרונות
+      history = history.slice(0, 10);
       localStorage.setItem("soccerHistory", JSON.stringify(history));
       renderHistory();
     }
@@ -155,7 +233,11 @@
       renderHistory();
     }
 
-    renderHistory(); // טען היסטוריה כשנכנסים
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+    }
+
+    renderHistory();
   </script>
 </body>
 </html>
